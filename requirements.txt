@@ -1,0 +1,4 @@
+flask
+vaderSentiment
+cryptography
+google-generativeai
