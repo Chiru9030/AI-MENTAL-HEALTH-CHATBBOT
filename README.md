@@ -2,8 +2,6 @@
 
 A privacy-focused, AI-powered companion designed to provide comfort, support, and a listening ear. Built with Python, Flask, and Google Gemini.
 
-![UI Screenshot](https://via.placeholder.com/800x400?text=Companion+UI+Preview) 
-*(Replace with actual screenshot if available)*
 
 ## 🌟 Features
 
