@@ -35,17 +35,12 @@ A privacy-focused, AI-powered companion designed to provide comfort, support, an
     pip install -r requirements.txt
     ```
 
-3.  **Configure API Key**:
-    - Open `app.py`.
-    - Replace the placeholder `GOOGLE_API_KEY` with your own key from [Google AI Studio](https://aistudio.google.com/).
-    - *Recommended*: Use an environment variable for security.
-
-4.  **Run the application**:
+3.  **Run the application**:
     ```bash
     python3 app.py
     ```
 
-5.  **Open in Browser**:
+4.  **Open in Browser**:
     Visit `http://localhost:5001` to start chatting.
 
 ## 🔒 Privacy & Security
