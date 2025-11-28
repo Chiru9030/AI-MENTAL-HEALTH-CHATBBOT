@@ -1,40 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Companion</title>
+    <title>SereneMind - Your Safe Space</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Outfit for modern, clean look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <div class="app-container">
-        <header>
-            <div class="status-dot"></div>
-            <h1>Companion</h1>
-            <p class="subtitle">Here for you, always.</p>
-        </header>
-        
-        <div class="chat-container" id="chat-container">
-            <!-- Messages will appear here -->
-            <div class="message bot-message">
-                <div class="bubble">
-                    Hi there. I'm here with you. How are you feeling right now?
-                </div>
-            </div>
-        </div>
 
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off">
-            <button id="send-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
+<body>
+
+    <!-- Background Slider -->
+    <div class="bg-slider" id="bg-slider">
+        <div class="bg-slide active"
+            style="background-image: url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1600&auto=format&fit=crop&q=80');">
+        </div>
+        <div class="bg-slide"
+            style="background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1600&auto=format&fit=crop&q=80');">
+        </div>
+        <div class="bg-slide"
+            style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop&q=80');">
+        </div>
+        <div class="bg-slide"
+            style="background-image: url('https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?w=1600&auto=format&fit=crop&q=80');">
         </div>
     </div>
 
+    <!-- Daily Inspiration -->
+    <div class="quote-container">
+        <p id="quote-text" class="quote-text">"You are loved more than you know."</p>
+        <span id="quote-author" class="quote-author">- Unknown</span>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>You Are Safe Here.</h1>
+            <p>I'm here to listen, to love, and to support you. No judgment, just us.</p>
+            <a href="#" class="cta-button" onclick="document.getElementById('user-input').focus(); return false;">Talk
+                to Me</a>
+        </div>
+    </section>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget">
+        <div class="chat-header">
+            <h3><i class="fas fa-leaf"></i> SereneMind AI</h3>
+            <div class="status-dot" title="Online & Listening"></div>
+        </div>
+        <div class="chat-box" id="chat-box">
+            <!-- Initial Greeting -->
+            <div class="message bot-message">
+                Hello there. 🌿 I'm here to listen. How are you feeling today?
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off">
+            <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script id="quotes-data" type="application/json">
+        {{ quotes | tojson | safe }}
+    </script>
+    <script>
+        const quotesData = JSON.parse(document.getElementById('quotes-data').textContent);
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
+
 </html>
