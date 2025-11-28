@@ -24,7 +24,7 @@ A privacy-focused, AI-powered companion designed to provide comfort, support, an
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/mental-health-chatbot.git
+    git clone https://github.com/Chiru9030/ai-mental-health-chatbot.git
     cd mental-health-chatbot
     ```
 
