@@ -2,3 +2,4 @@ flask
 vaderSentiment
 cryptography
 google-generativeai
+python-dotenv
