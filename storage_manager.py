@@ -2,7 +2,6 @@ import os
 import json
 from cryptography.fernet import Fernet
 
-# --- Configuration ---
 DATA_FILE = "chat_data.enc"
 KEY_FILE = "secret.key"
 
@@ -56,3 +55,4 @@ class StorageManager:
     def get_history(self, user_id):
         data = self.load_data()
         return data.get("users", {}).get(user_id, {}).get("history", [])
+
