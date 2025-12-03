@@ -2,75 +2,104 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SereneMind - Your Safe Space</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Google Fonts: Outfit for modern, clean look -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- FontAwesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SereneMind — Your Safe Space</title>
+
+  <!-- App styles (served by Flask static files) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+
+  <!-- Clean, readable font -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 
 <body>
+  <!-- Background slider (decorative) -->
+  <div class="bg-slider" aria-hidden="true" id="bg-slider">
+    <div class="bg-slide active"
+      style="background-image:url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1600&auto=format&fit=crop&q=80');">
+    </div>
+    <div class="bg-slide"
+      style="background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1600&auto=format&fit=crop&q=80');">
+    </div>
+    <div class="bg-slide"
+      style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop&q=80');">
+    </div>
+  </div>
 
-    <!-- Background Slider -->
-    <div class="bg-slider" id="bg-slider">
-        <div class="bg-slide active"
-            style="background-image: url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1600&auto=format&fit=crop&q=80');">
-        </div>
-        <div class="bg-slide"
-            style="background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1600&auto=format&fit=crop&q=80');">
-        </div>
-        <div class="bg-slide"
-            style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop&q=80');">
-        </div>
-        <div class="bg-slide"
-            style="background-image: url('https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?w=1600&auto=format&fit=crop&q=80');">
-        </div>
+  <!-- Quote / daily inspiration -->
+  <div class="quote-container" role="region" aria-label="Daily inspiration">
+    <p id="quote-text" class="quote-text">"You are loved more than you know."</p>
+    <span id="quote-author" class="quote-author">— Unknown</span>
+  </div>
+
+  <!-- Hero -->
+  <header class="hero" role="banner">
+    <div class="hero-content">
+      <h1>You are safe here.</h1>
+      <p class="hero-sub">
+        SereneMind listens without judgment. If you'd like, share what you're feeling — I'm here to support and
+        comfort you.
+      </p>
+      <a class="cta-button" href="#" onclick="document.getElementById('user-input').focus(); return false;">Start a
+        Conversation</a>
+    </div>
+  </header>
+
+  <!-- Chat widget -->
+  <main class="chat-widget" role="main" aria-live="polite">
+    <div class="chat-header" role="region" aria-label="Chat header">
+      <h3><i class="fas fa-seedling"></i> SereneMind</h3>
+      <div class="status-dot" title="Listening"></div>
     </div>
 
-    <!-- Daily Inspiration -->
-    <div class="quote-container">
-        <p id="quote-text" class="quote-text">"You are loved more than you know."</p>
-        <span id="quote-author" class="quote-author">- Unknown</span>
-    </div>
-
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>You Are Safe Here.</h1>
-            <p>I'm here to listen, to love, and to support you. No judgment, just us.</p>
-            <a href="#" class="cta-button" onclick="document.getElementById('user-input').focus(); return false;">Talk
-                to Me</a>
-        </div>
+    <section class="chat-box" id="chat-container" aria-label="Conversation">
+      <!-- initial greeting -->
+      <div class="message bot-message">
+        Hello — I'm listening. How are you feeling today?
+      </div>
     </section>
 
-    <!-- Chat Widget -->
-    <div class="chat-widget">
-        <div class="chat-header">
-            <h3><i class="fas fa-leaf"></i> SereneMind AI</h3>
-            <div class="status-dot" title="Online & Listening"></div>
-        </div>
-        <div class="chat-box" id="chat-box">
-            <!-- Initial Greeting -->
-            <div class="message bot-message">
-                Hello there. 🌿 I'm here to listen. How are you feeling today?
-            </div>
-        </div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="Type your message here..." autocomplete="off">
-            <button id="send-btn"><i class="fas fa-paper-plane"></i></button>
-        </div>
+    <div class="input-area" role="form" aria-label="Message input">
+      <input id="user-input" type="text" placeholder="Type your message..." autocomplete="off" aria-label="Message" />
+      <button id="send-btn" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
     </div>
 
-    <script id="quotes-data" type="application/json">
-        {{ quotes | tojson | safe }}
-    </script>
-    <script>
-        const quotesData = JSON.parse(document.getElementById('quotes-data').textContent);
-    </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <div id="crisis-warning" class="crisis-warning" role="alert" hidden>
+      <strong>If you're in immediate danger:</strong> call your local emergency number now. If you're thinking about
+      harming yourself, please contact your local crisis hotline. You can also reach out to a trusted person right now.
+    </div>
+
+    <footer class="chat-footer" role="contentinfo">
+      <small>
+        SereneMind is an AI support tool and <strong>not</strong> a replacement for professional mental health care. If
+        you are in crisis or need urgent help, contact emergency services or a local helpline.
+      </small>
+    </footer>
+  </main>
+
+  <!-- Injected quotes (from Flask) -->
+  <script id="quotes-data" type="application/json">{{ quotes | tojson | safe }}</script>
+  <script>
+    (function () {
+      try {
+        const quotes = JSON.parse(document.getElementById('quotes-data').textContent || "[]");
+        if (Array.isArray(quotes) && quotes.length) {
+          const pick = quotes[Math.floor(Math.random() * quotes.length)];
+          document.getElementById('quote-text').textContent = `"${pick.text}"`;
+          document.getElementById('quote-author').textContent = pick.author ? `— ${pick.author}` : '';
+        }
+      } catch (e) {
+        // fail silently; keep default quote
+      }
+    })();
+  </script>
+
+  <!-- App logic -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 
 </html>
