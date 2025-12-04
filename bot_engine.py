@@ -19,11 +19,12 @@ class BotEngine:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
 
-        # Suicide / crisis keywords
+        # Crisis keywords
         self.crisis_keywords = [
             "kill myself", "suicide", "end my life", "want to die",
             "hurt myself", "cut myself", "hopeless", "worthless",
-            "no reason to live", "give up", "can't do this anymore"
+            "no reason to live", "give up", "can't go on",
+            "end it", "life is pointless"
         ]
 
         # Local fallback responses
@@ -65,7 +66,7 @@ class BotEngine:
         return "neutral"
 
     # -------------------------------
-    # Gemini AI Safe Response
+    # Gemini Response
     # -------------------------------
 
     def generate_ai_response(self, user_msg, history, emotion):
@@ -73,34 +74,34 @@ class BotEngine:
             return None
 
         system_prompt = """
-You are a supportive, empathetic *mental-health companion*, not a therapist.
-Your goals:
-• Provide emotional support
+You are a supportive, empathetic mental-health companion — NOT a therapist.
+Your role:
+• Listen actively
 • Validate feelings
-• Encourage healthy thinking
-• Promote grounding and calming strategies
-• NEVER provide professional medical advice
-• NEVER act as a romantic partner or emotional substitute
-• ALWAYS avoid giving instructions involving harm, medication, or diagnosis
+• Encourage grounding and reflection
+• Avoid medical, diagnostic, or therapeutic claims
+• Never provide instructions involving harm
+• Never encourage self-treatment or diagnosis
+• Stay non-romantic and emotionally neutral
 
 Tone:
-• Warm, human, calm, comforting
-• Non-romantic and non-flirtatious
-• Gentle and non-judgmental
-• Short paragraphs, easy to read
+• Warm, gentle, calming
+• Short, clear sentences
+• Supportive, not intimate
 
-Crisis Rule:
-If the user expresses suicidal intent, encourage seeking professional help.
-DO NOT try to solve the crisis yourself.
+If the user expresses suicidal intent:
+• Encourage reaching out to a trusted person
+• Recommend contacting local emergency services
+• Do NOT attempt to “fix” the crisis
 
-Your current detected emotion is: {emotion}
+Detected emotion: {emotion}
 """
 
-        # Prepare history
+        # Build short history
         formatted_history = ""
-        for item in history[-8:]:
-            formatted_history += f"User: {item['user_msg']}\n"
-            formatted_history += f"Assistant: {item['bot_msg']}\n"
+        for h in history[-8:]:
+            formatted_history += f"User: {h['user_msg']}\n"
+            formatted_history += f"Assistant: {h['bot_msg']}\n"
 
         full_prompt = (
             system_prompt.format(emotion=emotion)
@@ -117,23 +118,28 @@ Your current detected emotion is: {emotion}
             return None
 
     # -------------------------------
-    # Main Response Engine
+    # Main Response
     # -------------------------------
+    
+    def generate_response(self, user_msg, history):
+        # Emotion
+        emotion = self.detect_emotion(user_msg)
+        if emotion not in self.fallback:
+            emotion = "neutral"
 
-    def generate_response(self, user_msg, history, emotion):
-        # 1. Crisis detection
+        # Crisis check
         if self.check_crisis(user_msg):
             return (
-                "I’m really sorry you're feeling this level of pain. "
-                "You deserve care and safety. Please reach out to someone you trust "
-                "or a local suicide prevention hotline. If you're in immediate danger, "
-                "contact emergency services. You are not alone — your feelings matter. ❤️"
+                "I’m really sorry you're feeling this much pain. You deserve care and safety. "
+                "Please reach out to someone you trust or your local suicide helpline. "
+                "If you're in immediate danger, please contact emergency services right now. "
+                "You are not alone — your feelings matter. ❤️"
             )
 
-        # 2. Try Gemini AI
+        # Try online AI
         ai_reply = self.generate_ai_response(user_msg, history, emotion)
         if ai_reply:
             return ai_reply
 
-        # 3. Local fallback
+        # Local fallback
         return self.fallback[emotion][0]
