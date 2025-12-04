@@ -4,101 +4,95 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SereneMind — Your Safe Space</title>
+  <title>Serena — AI Companion</title>
 
-  <!-- App styles (served by Flask static files) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-
-  <!-- Clean, readable font -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
-
-  <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 
 <body>
-  <!-- Background slider (decorative) -->
-  <div class="bg-slider" aria-hidden="true" id="bg-slider">
-    <div class="bg-slide active"
-      style="background-image:url('https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1600&auto=format&fit=crop&q=80');">
-    </div>
-    <div class="bg-slide"
-      style="background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1600&auto=format&fit=crop&q=80');">
-    </div>
-    <div class="bg-slide"
-      style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&auto=format&fit=crop&q=80');">
-    </div>
-  </div>
-
-  <!-- Quote / daily inspiration -->
-  <div class="quote-container" role="region" aria-label="Daily inspiration">
-    <p id="quote-text" class="quote-text">"You are loved more than you know."</p>
-    <span id="quote-author" class="quote-author">— Unknown</span>
-  </div>
-
-  <!-- Hero -->
-  <header class="hero" role="banner">
-    <div class="hero-content">
-      <h1>You are safe here.</h1>
-      <p class="hero-sub">
-        SereneMind listens without judgment. If you'd like, share what you're feeling — I'm here to support and
-        comfort you.
-      </p>
-      <a class="cta-button" href="#" onclick="document.getElementById('user-input').focus(); return false;">Start a
-        Conversation</a>
-    </div>
-  </header>
-
-  <!-- Chat widget -->
-  <main class="chat-widget" role="main" aria-live="polite">
-    <div class="chat-header" role="region" aria-label="Chat header">
-      <h3><i class="fas fa-seedling"></i> SereneMind</h3>
-      <div class="status-dot" title="Listening"></div>
-    </div>
-
-    <section class="chat-box" id="chat-container" aria-label="Conversation">
-      <!-- initial greeting -->
-      <div class="message bot-message">
-        Hello — I'm listening. How are you feeling today?
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <h1>Serena</h1>
+        <small>AI Companion</small>
       </div>
-    </section>
+      <div class="controls">
+        <button id="voice-toggle" title="Toggle voice (on/off)"><i class="fas fa-microphone"></i></button>
+        <button id="mem-clear" title="Clear memory"><i class="fas fa-trash-alt"></i></button>
+      </div>
+    </header>
 
-    <div class="input-area" role="form" aria-label="Message input">
-      <input id="user-input" type="text" placeholder="Type your message..." autocomplete="off" aria-label="Message" />
-      <button id="send-btn" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
-    </div>
+    <main class="main-grid">
+      <aside class="left-panel">
+        <section class="quote-panel">
+          <div id="daily-quote" class="quote">"You are loved more than you know."</div>
+          <div id="quote-author" class="author">— Unknown</div>
+        </section>
 
-    <div id="crisis-warning" class="crisis-warning" role="alert" hidden>
-      <strong>If you're in immediate danger:</strong> call your local emergency number now. If you're thinking about
-      harming yourself, please contact your local crisis hotline. You can also reach out to a trusted person right now.
-    </div>
+        <section class="features">
+          <button id="checkin-btn" class="panel-btn">Daily Check-in</button>
+          <button id="breath-btn" class="panel-btn">Breathing Exercise</button>
+          <button id="journal-btn" class="panel-btn">Journaling Mode</button>
+          <button id="sleep-btn" class="panel-btn">Sleep Companion</button>
+        </section>
 
-    <footer class="chat-footer" role="contentinfo">
-      <small>
-        SereneMind is an AI support tool and <strong>not</strong> a replacement for professional mental health care. If
-        you are in crisis or need urgent help, contact emergency services or a local helpline.
-      </small>
-    </footer>
-  </main>
+        <section class="memory-preview">
+          <h4>Recent Memory</h4>
+          <ul id="memory-list"></ul>
+        </section>
+      </aside>
 
-  <!-- Injected quotes (from Flask) -->
+      <section class="chat-panel">
+        <div id="bg-overlay" class="bg-overlay"></div>
+
+        <div class="chat-header">
+          <div class="bot-title">
+            <i class="fas fa-seedling"></i>
+            <div>
+              <div class="title">Serena</div>
+              <div class="subtitle">I’m here to listen</div>
+            </div>
+          </div>
+          <div class="emotion-indicator" id="emotion-indicator">😐</div>
+        </div>
+
+        <div id="chat-container" class="chat-container" aria-live="polite">
+          <div class="message bot-message">
+            <div class="bubble">Hello — I'm listening. How are you feeling today?</div>
+          </div>
+        </div>
+
+        <div id="typing-indicator" class="typing-indicator" hidden>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <span class="typing-text">Serena is typing...</span>
+        </div>
+
+        <div class="input-row">
+          <div class="left-input">
+            <button id="mic-btn" class="mic-btn" title="Hold & speak"><i class="fas fa-microphone"></i></button>
+            <input id="user-input" type="text" placeholder="Type your message..." autocomplete="off" />
+          </div>
+          <div class="right-input">
+            <button id="send-btn" class="send-btn" title="Send"><i class="fas fa-paper-plane"></i></button>
+          </div>
+        </div>
+
+        <div id="crisis-warning" class="crisis-warning" hidden>
+          If you're in immediate danger, contact local emergency services now.
+        </div>
+
+        <footer class="chat-footer">
+          <small>Serena is not a substitute for professional care.</small>
+        </footer>
+      </section>
+    </main>
+  </div>
+
   <script id="quotes-data" type="application/json">{{ quotes | tojson | safe }}</script>
-  <script>
-    (function () {
-      try {
-        const quotes = JSON.parse(document.getElementById('quotes-data').textContent || "[]");
-        if (Array.isArray(quotes) && quotes.length) {
-          const pick = quotes[Math.floor(Math.random() * quotes.length)];
-          document.getElementById('quote-text').textContent = `"${pick.text}"`;
-          document.getElementById('quote-author').textContent = pick.author ? `— ${pick.author}` : '';
-        }
-      } catch (e) {
-        // fail silently; keep default quote
-      }
-    })();
-  </script>
-
-  <!-- App logic -->
   <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 
