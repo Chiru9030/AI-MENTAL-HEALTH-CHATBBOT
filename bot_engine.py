@@ -1,145 +1,151 @@
+# bot_engine.py
 import os
-import google.generativeai as genai
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import random
 from dotenv import load_dotenv
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 load_dotenv()
 
-# Configure Gemini safely
-API_KEY = os.getenv("GOOGLE_API_KEY")
-if API_KEY:
-    genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel("gemini-2.0-flash")
-else:
-    model = None
-    print("⚠ WARNING: GOOGLE_API_KEY not found. Using local fallback mode.")
+# Try to import google generative client if API key present
+GENAI_AVAILABLE = False
+try:
+    import google.generativeai as genai
+    GENAI_AVAILABLE = True
+except Exception:
+    GENAI_AVAILABLE = False
 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if GOOGLE_API_KEY and GENAI_AVAILABLE:
+    try:
+        genai.configure(api_key=GOOGLE_API_KEY)
+        # prefer a stable conversational model; adjust if needed
+        MODEL_NAME = "gemini-pro"
+    except Exception as e:
+        print("Could not configure google generative client:", e)
+        GENAI_AVAILABLE = False
+else:
+    GENAI_AVAILABLE = False
 
 class BotEngine:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
-
-        # Crisis keywords
+        # Broad crisis keywords (not exhaustive)
         self.crisis_keywords = [
-            "kill myself", "suicide", "end my life", "want to die",
-            "hurt myself", "cut myself", "hopeless", "worthless",
-            "no reason to live", "give up", "can't go on",
-            "end it", "life is pointless"
+            "kill myself", "killing myself", "suicide", "end my life", "want to die", "cant live", "give up",
+            "no reason to live", "hurt myself", "i'll end it", "i will end it", "i can't go on",
+            "i'm going to kill myself", "i'm going to end my life"
         ]
 
-        # Local fallback responses
+        # Friendly companion fallback responses
         self.fallback = {
             "sad": [
-                "I'm really sorry you're feeling this way. You’re not alone — I'm here with you.",
-                "That sounds really heavy. Thank you for sharing it with me. I'm here to support you.",
-            ],
-            "angry": [
-                "It makes sense that you're feeling upset. Your emotions are valid — tell me what happened.",
-                "I'm listening. It's okay to feel anger; it usually means something important is going on."
+                "I’m really sorry you’re feeling down. I’m here with you — tell me more when you’re ready.",
+                "That sounds heavy. Thank you for sharing it with me. I’m here to listen."
             ],
             "anxious": [
-                "Take a slow breath with me. You're safe right now. Tell me what’s worrying you.",
-                "Anxiety can feel overwhelming, but you aren't facing it alone. I'm here with you."
+                "Take a slow breath with me. You’re safe right now. What’s on your mind?",
+                "Anxiety is so tough — you’re not alone. Tell me what’s worrying you if you can."
+            ],
+            "angry": [
+                "It makes sense to feel upset. You’re allowed to feel what you feel.",
+                "I’m listening. If you want, tell me why this is making you angry."
+            ],
+            "positive": [
+                "That’s wonderful news — I’m so happy for you!",
+                "That sounds great! Tell me more."
             ],
             "neutral": [
-                "I’m here and listening. Tell me more — whatever is on your mind matters.",
-                "I'm here for you. What would you like to talk about?"
+                "I’m here and listening. What would you like to talk about?",
+                "I’m right here. Tell me what’s on your mind."
             ]
         }
 
-    # -------------------------------
-    # Crisis + Emotion Detection
-    # -------------------------------
-
     def check_crisis(self, text):
-        text = text.lower()
-        return any(w in text for w in self.crisis_keywords)
+        t = text.lower()
+        print(f"DEBUG: Checking crisis for '{t}' against keywords")
+        for k in self.crisis_keywords:
+            if k in t:
+                print(f"DEBUG: Match found for '{k}'")
+                return True
+        return False
 
     def detect_emotion(self, text):
-        text = text.lower()
-        if any(w in text for w in ["sad", "cry", "hurt", "pain", "down", "depressed"]):
+        t = text.lower()
+        vs = self.analyzer.polarity_scores(text)
+        compound = vs.get("compound", 0.0)
+        # keyword overrides for clarity
+        if any(w in t for w in ["sad", "cry", "depressed", "down", "hopeless"]):
             return "sad"
-        if any(w in text for w in ["angry", "mad", "upset", "pissed"]):
-            return "angry"
-        if any(w in text for w in ["anxious", "scared", "panic", "nervous"]):
+        if any(w in t for w in ["anxious", "anxiety", "panic", "nervous", "scared", "worried"]):
             return "anxious"
+        if any(w in t for w in ["angry", "annoyed", "mad", "furious", "irritated"]):
+            return "angry"
+        if compound >= 0.4:
+            return "positive"
+        if compound <= -0.3:
+            return "sad"
         return "neutral"
 
-    # -------------------------------
-    # Gemini Response
-    # -------------------------------
-
     def generate_ai_response(self, user_msg, history, emotion):
-        if not model:
+        if not GENAI_AVAILABLE:
             return None
-
-        system_prompt = """
-You are a supportive, empathetic mental-health companion — NOT a therapist.
-Your role:
-• Listen actively
-• Validate feelings
-• Encourage grounding and reflection
-• Avoid medical, diagnostic, or therapeutic claims
-• Never provide instructions involving harm
-• Never encourage self-treatment or diagnosis
-• Stay non-romantic and emotionally neutral
-
-Tone:
-• Warm, gentle, calming
-• Short, clear sentences
-• Supportive, not intimate
-
-If the user expresses suicidal intent:
-• Encourage reaching out to a trusted person
-• Recommend contacting local emergency services
-• Do NOT attempt to “fix” the crisis
-
-Detected emotion: {emotion}
-"""
-
-        # Build short history
-        formatted_history = ""
-        for h in history[-8:]:
-            formatted_history += f"User: {h['user_msg']}\n"
-            formatted_history += f"Assistant: {h['bot_msg']}\n"
-
-        full_prompt = (
-            system_prompt.format(emotion=emotion)
-            + "\nConversation:\n"
-            + formatted_history
-            + f"\nUser: {user_msg}\nAssistant:"
+        # Build a concise prompt for the generative model
+        system_prompt = (
+            "You are 'Serena', a friendly, non-romantic, empathetic AI companion. "
+            "Be warm, validating, and supportive. Keep responses concise (2-4 short paragraphs). "
+            "Do not provide medical diagnoses. If the user expresses self-harm or suicide, respond with "
+            "empathy and advise contacting local emergency services and trusted people."
+            f"\nDetected user emotion: {emotion}\n\n"
         )
+        # Build a small chat history for context
+        chat_history = ""
+        for item in history[-8:]:
+            u = item.get("user_msg", "")
+            b = item.get("bot_msg", "")
+            if u:
+                chat_history += f"User: {u}\n"
+            if b:
+                chat_history += f"Assistant: {b}\n"
+        prompt = system_prompt + "Conversation:\n" + chat_history + f"User: {user_msg}\nAssistant:"
 
         try:
-            response = model.generate_content(full_prompt)
-            return response.text.strip()
+            # Use the modern GenerativeModel API
+            model = genai.GenerativeModel(MODEL_NAME)
+            resp = model.generate_content(prompt)
+            
+            if resp and resp.text:
+                return resp.text.strip()
         except Exception as e:
-            print("Gemini Error:", e)
+            print("Generative API error:", e)
             return None
 
-    # -------------------------------
-    # Main Response
-    # -------------------------------
-    
-    def generate_response(self, user_msg, history):
-        # Emotion
-        emotion = self.detect_emotion(user_msg)
-        if emotion not in self.fallback:
-            emotion = "neutral"
+        return None
 
-        # Crisis check
-        if self.check_crisis(user_msg):
+    def generate_response(self, user_msg, history):
+        print(f"DEBUG: Generating response for: '{user_msg}'")
+        
+        # 1. crisis detection (highest priority)
+        is_crisis = self.check_crisis(user_msg)
+        print(f"DEBUG: Crisis detected: {is_crisis}")
+        
+        if is_crisis:
             return (
-                "I’m really sorry you're feeling this much pain. You deserve care and safety. "
-                "Please reach out to someone you trust or your local suicide helpline. "
-                "If you're in immediate danger, please contact emergency services right now. "
-                "You are not alone — your feelings matter. ❤️"
+                "I’m really sorry you’re in so much pain. You deserve immediate support and safety. "
+                "Please consider contacting your local emergency services or a suicide prevention hotline, "
+                "or reach out to someone close to you right now. You are not alone."
             )
 
-        # Try online AI
+        # 2. detect emotion
+        emotion = self.detect_emotion(user_msg)
+        print(f"DEBUG: Emotion detected: {emotion}")
+        
+        # 3. try online generative AI
         ai_reply = self.generate_ai_response(user_msg, history, emotion)
         if ai_reply:
+            print("DEBUG: Using AI response")
             return ai_reply
-
-        # Local fallback
-        return self.fallback[emotion][0]
+        
+        print("DEBUG: AI failed, using fallback")
+        # 4. fallback local response
+        choices = self.fallback.get(emotion, self.fallback["neutral"])
+        return random.choice(choices)
