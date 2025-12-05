@@ -1,3 +1,4 @@
+# storage_manager.py
 import os
 import json
 from cryptography.fernet import Fernet
@@ -5,81 +6,69 @@ from cryptography.fernet import Fernet
 DATA_FILE = "chat_data.enc"
 KEY_FILE = "secret.key"
 
-
 class StorageManager:
-    def __init__(self):
+    def __init__(self, data_file=DATA_FILE, key_file=KEY_FILE):
+        self.data_file = data_file
+        self.key_file = key_file
         self.key = self._load_or_create_key()
         self.cipher = Fernet(self.key)
         self._ensure_data_file()
 
-    # --------------------------------------
-    # KEY MANAGEMENT
-    # --------------------------------------
     def _load_or_create_key(self):
-        """Loads the encryption key or creates a new one if missing."""
-        if os.path.exists(KEY_FILE):
-            with open(KEY_FILE, "rb") as f:
+        if os.path.exists(self.key_file):
+            with open(self.key_file, "rb") as f:
                 return f.read()
-
-        # Create a new encryption key
         key = Fernet.generate_key()
-        with open(KEY_FILE, "wb") as f:
+        with open(self.key_file, "wb") as f:
             f.write(key)
         return key
 
-    # --------------------------------------
-    # FILE INITIALIZATION
-    # --------------------------------------
     def _ensure_data_file(self):
-        """Ensures encrypted data file exists with proper structure."""
-        if not os.path.exists(DATA_FILE):
+        if not os.path.exists(self.data_file):
             initial = {"users": {}}
-            self._save_encrypted(initial)
+            self.save_data(initial)
 
-    # --------------------------------------
-    # INTERNAL ENCRYPTED SAVE/LOAD
-    # --------------------------------------
-    def _save_encrypted(self, data):
-        try:
-            raw = json.dumps(data).encode()
-            encrypted = self.cipher.encrypt(raw)
-            with open(DATA_FILE, "wb") as f:
-                f.write(encrypted)
-        except Exception as e:
-            print("Storage Save Error:", e)
+    def save_data(self, data):
+        json_data = json.dumps(data).encode("utf-8")
+        encrypted = self.cipher.encrypt(json_data)
+        with open(self.data_file, "wb") as f:
+            f.write(encrypted)
 
-    def _load_encrypted(self):
-        """Reads encrypted data and safely returns decrypted JSON."""
-        if not os.path.exists(DATA_FILE):
+    def load_data(self):
+        if not os.path.exists(self.data_file):
             return {"users": {}}
-
         try:
-            with open(DATA_FILE, "rb") as f:
-                encrypted = f.read()
-                if not encrypted:
+            with open(self.data_file, "rb") as f:
+                enc = f.read()
+                if not enc:
                     return {"users": {}}
-
-            decrypted = self.cipher.decrypt(encrypted).decode()
-            return json.loads(decrypted)
-
+                dec = self.cipher.decrypt(enc)
+                return json.loads(dec.decode("utf-8"))
         except Exception as e:
-            print("Storage Load Error:", e)
+            print("Storage load error:", e)
             return {"users": {}}
 
-    # --------------------------------------
-    # PUBLIC METHODS USED BY APP/BOT
-    # --------------------------------------
-    def add_message(self, user_id, msg):
-        """Adds a new chat message for a user."""
-        data = self._load_encrypted()
-
+    def add_message(self, user_id, message_data):
+        data = self.load_data()
+        if "users" not in data:
+            data["users"] = {}
         if user_id not in data["users"]:
             data["users"][user_id] = {"history": []}
-
-        data["users"][user_id]["history"].append(msg)
-        self._save_encrypted(data)
+        data["users"][user_id]["history"].append(message_data)
+        self.save_data(data)
 
     def get_history(self, user_id):
-        """Returns chat history for a user."""
-        data = self._load_encrypted()
+        data = self.load_data()
         return data.get("users", {}).get(user_id, {}).get("history", [])
+
+    def clear_user(self, user_id):
+        data = self.load_data()
+        if "users" in data and user_id in data["users"]:
+            data["users"][user_id]["history"] = []
+            self.save_data(data)
+            return True
+        return False
+
+    def clear_all(self):
+        self.save_data({"users": {}})
+        return True
