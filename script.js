@@ -1,5 +1,4 @@
-// script.js - Serena frontend logic
-pdfjsLib = window.pdfjsLib || {}; // prevent pdf.js errors if present in other project files
+// static/js/script.js
 document.addEventListener("DOMContentLoaded", () => {
     // Elements
     const chatContainer = document.getElementById("chat-container");
@@ -9,299 +8,249 @@ document.addEventListener("DOMContentLoaded", () => {
     const typingIndicator = document.getElementById("typing-indicator");
     const emotionIndicator = document.getElementById("emotion-indicator");
     const bgOverlay = document.getElementById("bg-overlay");
-    const quotesDataEl = document.getElementById("quotes-data");
     const memoryList = document.getElementById("memory-list");
-    const crisisWarning = document.getElementById("crisis-warning");
-
-    // Feature buttons
+    const quotesDataEl = document.getElementById("quotes-data");
     const breathBtn = document.getElementById("breath-btn");
     const journalBtn = document.getElementById("journal-btn");
     const sleepBtn = document.getElementById("sleep-btn");
     const checkinBtn = document.getElementById("checkin-btn");
     const voiceToggle = document.getElementById("voice-toggle");
     const memClear = document.getElementById("mem-clear");
+    const crisisWarning = document.getElementById("crisis-warning");
 
     // State
     let voiceEnabled = true;
     let recognition = null;
     let isListening = false;
-    let serverSupportsTTS = true; // will be checked on first TTS call
     let memory = [];
 
-    // Load quotes and show one
+    // Show a random daily quote
     try {
-        const quotes = JSON.parse(quotesDataEl.textContent || "[]");
-        if (Array.isArray(quotes) && quotes.length) {
+        const quotes = JSON.parse(document.getElementById("quotes-data").textContent || "[]");
+        if (quotes && quotes.length) {
             const q = quotes[Math.floor(Math.random() * quotes.length)];
             document.getElementById("daily-quote").textContent = `"${q.text}"`;
             document.getElementById("quote-author").textContent = q.author ? `— ${q.author}` : "";
         }
-    } catch (e) {
-        // ignore
-    }
+    } catch (e) { }
 
-    // Helpers: append messages
-    function appendMessage(text, isUser = false) {
-        const wrapper = document.createElement("div");
-        wrapper.className = `message ${isUser ? "user-message" : "bot-message"}`;
-
-        const bubble = document.createElement("div");
-        bubble.className = "bubble";
-        bubble.textContent = text;
-
-        wrapper.appendChild(bubble);
-        chatContainer.appendChild(wrapper);
+    // Helpers
+    function scrollToBottom() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // Slow reveal text (also used when TTS plays)
-    async function revealText(targetText, containerBubble) {
-        containerBubble.textContent = "";
-        for (let i = 0; i < targetText.length; i++) {
-            containerBubble.textContent += targetText[i];
-            if (i % 6 === 0) await new Promise(r => setTimeout(r, 18)); // speed control
-        }
+    function appendMessage(text, isUser = false) {
+        const wrapper = document.createElement("div");
+        wrapper.className = `message ${isUser ? "user-message" : "bot-message"}`;
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+        wrapper.appendChild(bubble);
+        chatContainer.appendChild(wrapper);
+        scrollToBottom();
+        return bubble;
     }
 
-    // Typing indicator
-    function showTyping() {
-        typingIndicator.hidden = false;
+    async function revealTextSlow(targetText, bubble) {
+        bubble.textContent = "";
+        for (let i = 0; i < targetText.length; i++) {
+            bubble.textContent += targetText[i];
+            if (i % 4 === 0) await new Promise(r => setTimeout(r, 18));
+        }
+        scrollToBottom();
     }
-    function hideTyping() {
-        typingIndicator.hidden = true;
-    }
+
+    function showTyping() { typingIndicator.hidden = false; }
+    function hideTyping() { typingIndicator.hidden = true; }
 
     // Emotion mapping
-    const emotionEmoji = {
-        sad: "😢",
-        anxious: "😟",
-        angry: "😠",
-        neutral: "😐",
-        positive: "😊"
-    };
-    function setEmotion(e) {
-        emotionIndicator.textContent = emotionEmoji[e] || emotionEmoji["neutral"];
-    }
+    const emojiMap = { sad: "😢", anxious: "😟", angry: "😠", positive: "😊", neutral: "😐" };
+    function setEmotion(e) { emotionIndicator.textContent = emojiMap[e] || emojiMap["neutral"]; }
 
-    // Play audio blob returned by server
-    async function playAudioBlob(blob) {
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
-        audio.play();
-        audio.onended = () => URL.revokeObjectURL(audioUrl);
+    // Background themes
+    const themes = [
+        "linear-gradient(120deg,#89f7fe,#66a6ff)",
+        "linear-gradient(120deg,#a18cd1,#fbc2eb)",
+        "linear-gradient(120deg,#667eea,#764ba2)",
+        "linear-gradient(120deg,#fbc2eb,#a6c1ee)"
+    ];
+    let t = 0;
+    function cycleBg() {
+        bgOverlay.style.background = themes[t % themes.length];
+        t++;
     }
+    setInterval(cycleBg, 9000);
 
-    // TTS: try server endpoint first, fallback to browser speechSynthesis
+    // TTS: try server-side /api/tts first
     async function speakText(text) {
         if (!voiceEnabled) return;
-        // Try server TTS
         try {
-            const resp = await fetch("/api/tts", {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
+            const res = await fetch("/api/tts", {
+                method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text })
             });
-            if (!resp.ok) throw new Error("TTS server error");
-            // Check for JSON fallback
-            const contentType = resp.headers.get("content-type") || "";
-            if (contentType.includes("application/json")) {
-                const j = await resp.json();
-                if (j && j.fallback) {
-                    // fallback to browser
-                    speakBrowser(text);
-                    return;
-                }
-            } else {
-                // assume audio blob
-                const blob = await resp.blob();
-                await playAudioBlob(blob);
+            if (!res.ok) throw new Error("TTS endpoint failed");
+            const json = await res.json();
+            if (json.audio) {
+                const audio = new Audio("data:audio/mp3;base64," + json.audio);
+                await audio.play();
+                return;
+            }
+            // fallback flag -> use browser
+            if (json.fallback) {
+                speakBrowser(text);
                 return;
             }
         } catch (e) {
-            // server TTS failed -> use browser TTS
+            // fallback to browser TTS
             speakBrowser(text);
         }
     }
 
-    // Browser speechSynthesis fallback
     function speakBrowser(text) {
         if (!("speechSynthesis" in window)) return;
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.rate = 1;
-        utter.pitch = 1;
-        // choose voice optionally
+        const ut = new SpeechSynthesisUtterance(text);
+        ut.rate = 1.0; ut.pitch = 1.0;
+        // pick an English voice if available
         const voices = speechSynthesis.getVoices();
         if (voices && voices.length) {
-            // pick a pleasant voice (fallback)
-            utter.voice = voices.find(v => /en-US|en_GB|English/i.test(v.lang)) || voices[0];
+            ut.voice = voices.find(v => /Google.*English|English.*(US|GB)|en-US|en_GB/i.test(v.lang + " " + v.name)) || voices[0];
         }
         speechSynthesis.cancel();
-        speechSynthesis.speak(utter);
+        speechSynthesis.speak(ut);
     }
 
-    // Send to chat endpoint (existing) and display response gradually + speak
+    // Send to server, handle response
     async function sendToServer(text) {
         try {
             showTyping();
             const resp = await fetch("/api/chat", {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: text })
             });
             hideTyping();
             if (!resp.ok) {
-                appendMessage("Sorry, I couldn't reach Serena. Try again.", false);
+                appendMessage("Serena is having trouble right now. Try again later.");
                 return;
             }
             const data = await resp.json();
-            const analysis = data.response || "";
+            const botText = data.response || "I'm here.";
             const emotion = data.emotion || "neutral";
             setEmotion(emotion);
-
-            // store memory locally (basic)
-            memory.unshift({ ts: Date.now(), user: text, bot: analysis, emo: emotion });
-            if (memory.length > 10) memory.pop();
+            // Save local memory preview
+            memory.unshift({ ts: Date.now(), user: text, bot: botText, emo: emotion });
+            if (memory.length > 12) memory.pop();
             renderMemory();
-
-            // show slow reveal and speak
+            // Render response slowly while speaking
             const wrapper = document.createElement("div");
             wrapper.className = "message bot-message";
             const bubble = document.createElement("div");
             bubble.className = "bubble";
             wrapper.appendChild(bubble);
             chatContainer.appendChild(wrapper);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
-            // speak in background while revealing
-            if (voiceEnabled) speakText(analysis);
-            await revealText(analysis, bubble);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
-            // crisis UI
-            if (data.crisis === true) {
+            scrollToBottom();
+            // Speak while revealing
+            if (voiceEnabled) speakText(botText);
+            await revealTextSlow(botText, bubble);
+            scrollToBottom();
+            // Show crisis warning if needed
+            if (data.crisis) {
                 crisisWarning.hidden = false;
-                setTimeout(() => crisisWarning.hidden = true, 15000);
+                setTimeout(() => crisisWarning.hidden = true, 14000);
             }
-        } catch (err) {
+        } catch (e) {
             hideTyping();
-            appendMessage("We're offline or the server had an error. Serena will still try to support you locally.", false);
-            // offline fallback simple reply
-            const fallback = "I hear you. Tell me more about what's on your mind.";
-            appendMessage(fallback, false);
-            speakBrowser(fallback);
+            appendMessage("You seem to be offline. Serena will try to help locally.");
+            speakBrowser("You seem to be offline. I will try to support you locally.");
         }
     }
 
-    // render memory preview
+    // Render memory preview
     function renderMemory() {
         memoryList.innerHTML = "";
         memory.slice(0, 6).forEach(m => {
             const li = document.createElement("li");
             const d = new Date(m.ts);
-            li.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString()}: ${m.user.slice(0, 28)} → ${m.emo}`;
+            li.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString()}: ${m.user.slice(0, 36)} → ${m.emo}`;
             memoryList.appendChild(li);
         });
     }
 
-    // Background transitions
-    const themes = [
-        "linear-gradient(135deg,#667eea 0%,#764ba2 100%)",
-        "linear-gradient(135deg,#a18cd1 0%,#fbc2eb 100%)",
-        "linear-gradient(135deg,#89f7fe 0%,#66a6ff 100%)",
-        "linear-gradient(135deg,#fdfbfb 0%,#ebedee 100%)"
-    ];
-    let themeIndex = 0;
-    function cycleBackground() {
-        bgOverlay.style.background = themes[themeIndex % themes.length];
-        bgOverlay.style.opacity = 0.12 + (themeIndex % 2) * 0.04;
-        themeIndex++;
-    }
-    setInterval(cycleBackground, 8000); // slow transition
+    // Fetch history on load
+    (async () => {
+        try {
+            const r = await fetch("/api/history");
+            if (r.ok) {
+                const j = await r.json();
+                if (j.history && j.history.length) {
+                    memory = j.history.slice(-6).reverse().map(h => ({ ts: Date.now(), user: h.user_msg || "", bot: h.bot_msg || "", emo: "neutral" }));
+                    renderMemory();
+                }
+            }
+        } catch (e) { }
+    })();
 
     // Speech recognition (Web Speech API)
-    function initSpeechRecognition() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            micBtn.disabled = true;
-            return;
-        }
-        recognition = new SpeechRecognition();
+    function initRecognition() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { micBtn.disabled = true; return; }
+        recognition = new SR();
         recognition.lang = "en-US";
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => {
-            isListening = true;
-            micBtn.classList.add("listening");
-        };
-        recognition.onend = () => {
-            isListening = false;
-            micBtn.classList.remove("listening");
-        };
+        recognition.onstart = () => { isListening = true; micBtn.classList.add("listening"); }
+        recognition.onend = () => { isListening = false; micBtn.classList.remove("listening"); }
+        recognition.onerror = (e) => { isListening = false; micBtn.classList.remove("listening"); }
         recognition.onresult = (evt) => {
             const text = evt.results[0][0].transcript;
             userInput.value = text;
             sendUserMessage();
-        };
-        recognition.onerror = (e) => {
-            isListening = false;
-            micBtn.classList.remove("listening");
-            console.warn("STT error", e);
-        };
+        }
     }
-    initSpeechRecognition();
+    initRecognition();
 
-    // Send message flows
+    // Send flows
     async function sendUserMessage() {
-        const text = userInput.value.trim();
-        if (!text) return;
-        appendMessage(text, true);
+        const t = userInput.value.trim();
+        if (!t) return;
+        appendMessage(t, true);
         userInput.value = "";
-        await sendToServer(text);
+        await sendToServer(t);
     }
 
-    // UI bindings
     sendBtn.addEventListener("click", sendUserMessage);
-    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendUserMessage(); });
+    userInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendUserMessage() });
 
-    // Mic button: press to talk (on mobile tap toggles)
-    let micPressTimer = null;
-    micBtn.addEventListener("mousedown", () => {
-        if (!recognition) return;
-        try { recognition.start(); } catch (e) { }
-    });
-    micBtn.addEventListener("mouseup", () => {
-        if (!recognition) return;
-        try { recognition.stop(); } catch (e) { }
-    });
-    // mobile: toggle on click
+    // Mic button: toggle on click
     micBtn.addEventListener("click", () => {
         if (!recognition) return;
-        if (isListening) { recognition.stop(); } else { recognition.start(); }
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
     });
 
     // Voice toggle
     voiceToggle.addEventListener("click", () => {
         voiceEnabled = !voiceEnabled;
-        voiceToggle.classList.toggle("off", !voiceEnabled);
-        voiceToggle.title = voiceEnabled ? "Voice ON" : "Voice OFF";
+        voiceToggle.style.opacity = voiceEnabled ? 1 : 0.5;
     });
 
-    // Memory clear
-    memClear.addEventListener("click", () => {
-        if (!confirm("Clear local memory?")) return;
+    // Clear memory (local + server)
+    memClear.addEventListener("click", async () => {
+        if (!confirm("Clear local and server memory?")) return;
         memory = [];
         renderMemory();
-        fetch('/api/clear_memory', { method: 'POST' }).catch(() => { });
+        try { await fetch("/api/clear_memory", { method: "POST" }); } catch (e) { }
     });
 
-    // Feature buttons (simple guided behaviors)
+    // Feature flows
     breathBtn.addEventListener("click", () => {
-        // Simple breathing modal-like experience
-        const steps = ["Breathe in 4", "Hold 7", "Exhale 8"];
-        appendMessage("Let's do a short 4-7-8 breath with me.", false);
-        speakBrowser("Let's do a short breathing exercise together.");
+        appendMessage("Let's do a short 4-7-8 breathing exercise.", false);
+        speakBrowser("Let's do a short 4-7-8 breathing exercise together.");
         (async () => {
+            const steps = ["Breathe in... 4", "Hold... 7", "Exhale... 8"];
             for (let i = 0; i < 3; i++) {
                 appendMessage(steps[0], false);
                 await new Promise(r => setTimeout(r, 4000));
@@ -314,36 +263,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     journalBtn.addEventListener("click", () => {
-        const prompt = "Let's write a short journal entry. What's on your mind today?";
+        const prompt = "Let's write a short journal entry: what's on your mind?";
         appendMessage(prompt, false);
         speakBrowser(prompt);
     });
 
     sleepBtn.addEventListener("click", () => {
-        const sleepText = "Relax. Close your eyes. Imagine a soft warm place. I will tell you a calming story.";
-        appendMessage(sleepText, false);
-        speakText(sleepText);
+        const text = "Close your eyes and imagine a warm place. I will guide you for a soft rest.";
+        appendMessage(text, false);
+        speakText(text);
     });
 
     checkinBtn.addEventListener("click", () => {
-        const c = "Hi — how are you feeling right now, on a scale of 1 to 10?";
-        appendMessage(c, false);
-        speakBrowser(c);
+        const text = "Hi — how are you feeling right now on a scale of 1 to 10?";
+        appendMessage(text, false);
+        speakBrowser(text);
     });
-
-    // On load: fetch small state / memory from server
-    (async () => {
-        try {
-            const r = await fetch('/api/history');
-            if (r.ok) {
-                const d = await r.json();
-                // d.history is array of interactions, show last few
-                if (d.history && d.history.length) {
-                    memory = d.history.slice(-6).reverse().map(h => ({ ts: Date.now(), user: h.user_msg || "", bot: h.bot_msg || "", emo: "neutral" }));
-                    renderMemory();
-                }
-            }
-        } catch (e) { }
-    })();
 
 }); // DOMContentLoaded
