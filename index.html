@@ -1,14 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Serena — AI Companion</title>
-
+  <title>Serena — Friendly Companion</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
 </head>
 
 <body>
@@ -16,11 +15,11 @@
     <header class="app-header">
       <div class="brand">
         <h1>Serena</h1>
-        <small>AI Companion</small>
+        <small>Friendly AI Companion</small>
       </div>
       <div class="controls">
         <button id="voice-toggle" title="Toggle voice (on/off)"><i class="fas fa-microphone"></i></button>
-        <button id="mem-clear" title="Clear memory"><i class="fas fa-trash-alt"></i></button>
+        <button id="mem-clear" title="Clear memory">Clear</button>
       </div>
     </header>
 
@@ -49,13 +48,13 @@
 
         <div class="chat-header">
           <div class="bot-title">
-            <i class="fas fa-seedling"></i>
+            <div class="avatar">🌱</div>
             <div>
               <div class="title">Serena</div>
               <div class="subtitle">I’m here to listen</div>
             </div>
           </div>
-          <div class="emotion-indicator" id="emotion-indicator">😐</div>
+          <div id="emotion-indicator" class="emotion-indicator">😐</div>
         </div>
 
         <div id="chat-container" class="chat-container" aria-live="polite">
@@ -73,11 +72,11 @@
 
         <div class="input-row">
           <div class="left-input">
-            <button id="mic-btn" class="mic-btn" title="Hold & speak"><i class="fas fa-microphone"></i></button>
+            <button id="mic-btn" class="mic-btn" title="Hold & speak">🎙️</button>
             <input id="user-input" type="text" placeholder="Type your message..." autocomplete="off" />
           </div>
           <div class="right-input">
-            <button id="send-btn" class="send-btn" title="Send"><i class="fas fa-paper-plane"></i></button>
+            <button id="send-btn" class="send-btn" title="Send">➡️</button>
           </div>
         </div>
 
@@ -92,8 +91,9 @@
     </main>
   </div>
 
-  <script id="quotes-data" type="application/json">{{ quotes | tojson | safe }}</script>
-  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <script type="application/json" id="quotes-data">{{ quotes | tojson | safe }}</script>
+  <!-- FontAwesome via CDN for icons -->
+  <script src="https://kit.fontawesome.com/a2d9f6f3a2.js" crossorigin="anonymous"></script>
 </body>
 
 </html>
