@@ -3,3 +3,4 @@ vaderSentiment
 cryptography
 google-generativeai
 python-dotenv
+
